@@ -12,7 +12,7 @@ pipeline {
   stages {
     stage('Compile') {
       steps {
-        git 'https://github.com/Lokeshwork/cicd-k8s-demo.git'
+        git branch: 'master', credentialsId: 'github', url: 'https://github.com/Lokeshwork/cicd-k8s-demo.git'
         script{
                 def mvnHome = tool name: 'MAVEN_HOME', type: 'maven'
                 sh "${mvnHome}/bin/mvn package"
