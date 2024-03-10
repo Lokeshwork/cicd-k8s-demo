@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: demo-app
-        image: interviewdot/cicd-k8s-demo:latest
+        image: 115069646213.dkr.ecr.us-east-1.amazonaws.com/simple-time-app:kubernetesdeploy
         ports:
         - containerPort: 8081
 ---
