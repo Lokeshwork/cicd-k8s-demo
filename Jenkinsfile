@@ -1,14 +1,18 @@
 pipeline {
-  environment {
-    registry = "interviewdot/cicd-k8s-demo"
-    registryCredential = 'docker-hub-credentials'
-    dockerImage = ''
+	    agent {label 'kubernetes'}
+    	environment {
+	    AWS_ACCOUNT_ID="115069646213"
+	    AWS_DEFAULT_REGION="us-east-1"
+	    IMAGE_REPO_NAME="simple-time-app"
+	    IMAGE_TAG="kubernetesdeploy"
+	    REPO_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/simple-time-app"
+	    YAML_FILE = "deployment.yml"
   }
-  agent any
+
   stages {
     stage('Compile') {
       steps {
-        git 'https://github.com/net-vinothkumar/cicd-k8s-demo.git'
+        git branch: 'master', url: 'https://github.com/Lokeshwork/cicd-k8s-demo.git'
         script{
                 def mvnHome = tool name: 'MAVEN_HOME', type: 'maven'
                 sh "${mvnHome}/bin/mvn package"
@@ -18,27 +22,32 @@ pipeline {
     stage('Building Docker Image') {
       steps{
         script {
-          dockerImage = docker.build registry + ":$BUILD_NUMBER"
+          sh "docker build -t ${REPO_URL}:${IMAGE_TAG} ."
         }
       }
     }
-    stage('Push Image To Docker Hub') {
-      steps{
-        script {
-          /* Finally, we'll push the image with two tags:
-                   * First, the incremental build number from Jenkins
-                   * Second, the 'latest' tag.
-                   * Pushing multiple tags is cheap, as all the layers are reused. */
-          docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
-              dockerImage.push("${env.BUILD_NUMBER}")
-              dockerImage.push("latest")
-          }
-        }
-      }
-    }
-    stage('Deploy to Kubernetes'){
+  stage('logging to AWS ECR'){
+		steps{
+			script {
+					sh """aws ecr get-login-password \
+			--region ${AWS_DEFAULT_REGION} \
+			| docker login \
+			--username AWS \
+			--password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"""
+			}
+		}
+	}
+	
+	stage('ECR push') {
+		steps{
+			script {
+			sh """docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}:${IMAGE_TAG}"""
+			}
+		}
+	}
+   stage('Deploy to Kubernetes') {
         steps{
-            sh 'kubectl apply -f deployment.yml'
+            sh 'kubectl apply -f ${YAML_FILE}'
        }
     }
   }
